@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 from tqdm import tqdm
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 from bokeh.plotting import *
@@ -43,3 +44,36 @@ for idx, n in enumerate(tqdm(unique_names)):
     df.StarInt[df.Name == n] = idx
 
 df.to_csv('multiples.csv', index=False)
+
+# start plotting in bokeh:
+
+#output_file("multis.html")
+
+source = ColumnDataSource(
+data=dict(
+        Name=df.Name,
+        StarInt=df.StarInt,
+        StTeff=df.StTeff,
+        StRadius=df.StRadius,
+        Radius=df.Radius,
+        Letter=df.Letter,
+        PeriodRatio=df.PeriodRatio,
+        Period=df.Period
+        )
+    )
+    
+fig = figure(tools="pan,wheel_zoom,box_zoom,reset", x_range=[-0.5, 50.0], \
+        y_range=[0.0,500.0], active_scroll="wheel_zoom") 
+        
+pl_render = fig.circle('PeriodRatio','StarInt', source=source, size=10, name='planets')
+hover = HoverTool(renderers=[pl_render],
+tooltips=[
+        ("system", "@Name"),
+        ("id", "@Letter"),
+        ("period", "@Period{1.11} days")
+        ]
+    )
+fig.add_tools(hover)
+
+fig.show()
+
