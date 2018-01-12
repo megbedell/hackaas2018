@@ -29,10 +29,10 @@ if not os.path.isfile('multiples.csv'):
     params = [name[mask], mass[mask], rad[mask], per[mask], teff[mask], st_rad[mask], letter[mask]]
     param_names = ['Name', 'Mass', 'Radius', 'Period', 'StTeff', 'StRadius', 'Letter']
 
+
     df = pd.DataFrame()
     for param, param_name in zip(params, param_names):
         df[param_name] = param
-
     #Drop any NaN radius value planets
     df = df.dropna(axis=0, subset=['Radius','Period']).reset_index(drop=True)
 
