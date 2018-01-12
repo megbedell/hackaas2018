@@ -77,14 +77,13 @@ source = ColumnDataSource(data=dict(
                             opacity=(np.log10(df.Mass)+4)/6
                             )
                           )
-
 fig = figure(tools="pan,wheel_zoom,box_zoom,reset", x_range=[-0.5, 50.0], active_scroll="wheel_zoom")
 
 pl_render = fig.circle('PeriodRatio','StarInt', source=source, radius='Radius', name='planets', alpha='opacity')
 hover = HoverTool(renderers=[pl_render],
 tooltips=[
-        ("system", "@Name @Letter"),
-        ("period", "@Period{1.11} days")
+        ("System", "@Name @Letter"),
+        ("Period", "@Period{1.11} days")
         ]
     )
 fig.add_tools(hover)
@@ -98,11 +97,22 @@ st_source = ColumnDataSource(data=dict(
                             Name=df.Name[p],
                             StarInt=df.StarInt[p],
                             StTeff=df.StTeff[p],
-                            StRadius=df.StRadius[p]*0.05,
+                            size=df.StRadius[p]*0.05,
+                            StRadius=df.StRadius[p],
+                            StMass=df.StMass[p],
                             color=colors[p]
                             )
                           )
-st_render = fig.circle(0,'StarInt', source=st_source, radius='StRadius', name='stars', alpha=0.7, color='color')
+st_render = fig.circle(0,'StarInt', source=st_source, radius='size', name='stars', alpha=0.7, color='color')
+st_hover = HoverTool(renderers=[st_render],
+tooltips=[
+        ("Star", "@Name"),
+        ("Temp", "@StTeff{1.0} K"),
+        ("Mass", "@StMass{1.0} SolarMasses"),
+        ("Radius", "@StRadius{1.0} SolarRadii"),
+            ]
+    )
+fig.add_tools(st_hover)
 
 #fig.add_tools(hover)
 show(fig)
