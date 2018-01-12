@@ -31,25 +31,26 @@ for param, param_name in zip(params, param_names):
     df[param_name] = param
 
 #Drop any NaN radius value planets
-df.dropna(axis=0, subset=['Radius']).reset_index(drop=True)
+df = df.dropna(axis=0, subset=['Radius']).reset_index(drop=True)
+
 
 df['PeriodRatio'] = 0
 unique_names = df.Name.unique()
 for unq in tqdm(unique_names):
     pos = df.Name == unq
-    df.loc[pos].PeriodRatio = (df[pos].Period/df[pos].Period.min())
+    df = df.set_value(pos, 'PeriodRatio', (df[pos].Period/df[pos].Period.min()))
 
 df['StarInt'] = 0
 for idx, n in enumerate(tqdm(unique_names)):
-    df.StarInt[df.Name == n] = idx
+    df = df.set_value(df.Name == n, 'StarInt', idx * 10)
 
 df.to_csv('multiples.csv', index=False)
 
 # start plotting in bokeh:
 
-#output_file("multis.html")
+output_file("multis.html")
 
-source = ColumnDataSource(
+pl_source = ColumnDataSource(
 data=dict(
         Name=df.Name,
         StarInt=df.StarInt,
@@ -58,22 +59,41 @@ data=dict(
         Radius=df.Radius,
         Letter=df.Letter,
         PeriodRatio=df.PeriodRatio,
-        Period=df.Period
+        Period=df.Period,
+        sizes=df.Radius*50.
         )
     )
     
 fig = figure(tools="pan,wheel_zoom,box_zoom,reset", x_range=[-0.5, 50.0], \
         y_range=[0.0,500.0], active_scroll="wheel_zoom") 
         
-pl_render = fig.circle('PeriodRatio','StarInt', source=source, size=10, name='planets')
+pl_render = fig.circle('PeriodRatio','StarInt', source=pl_source, size='sizes', name='planets', alpha=0.7)
 hover = HoverTool(renderers=[pl_render],
 tooltips=[
-        ("system", "@Name"),
-        ("id", "@Letter"),
+        ("name", "@Name @Letter"),
         ("period", "@Period{1.11} days")
         ]
     )
 fig.add_tools(hover)
 
-fig.show()
+st_source = ColumnDataSource(
+data=dict(
+        Name=df.Name.unique(),
+        StarInt=df.StarInt.unique(),
+        StTeff=df.StTeff.unique(),
+        StRadius=df.StRadius.unique(),
+        sizes=df.StRadius.unique()*20.
+        )
+    )
+
+st_render = fig.circle(0.0,'StarInt', source=st_source, size='sizes', name='stars', alpha=0.7)
+hover_st = HoverTool(renderers=[st_render],
+tooltips=[
+        ("name", "@Name @Letter"),
+        ("Teff", "@StTeff{1.} K")
+        ]
+    )
+fig.add_tools(hover_st)
+
+show(fig)
 
