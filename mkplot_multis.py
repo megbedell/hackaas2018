@@ -31,11 +31,13 @@ for param, param_name in zip(params, param_names):
 
 #Drop any NaN radius value planets
 df.dropna(axis=0, subset=['Radius']).reset_index(drop=True)
-df['PeriodRatio'] = 1
+
+df['PeriodRatio'] = 0
 unique_names = df.Name.unique()
 for unq in tqdm(unique_names):
-    d = df[df.Name == unq]
-    df.PeriodRatio[df.Name == unq] = np.copy(d.Period.astype(float)/d.Period.min().astype(float))
+    pos = df.Name == unq
+    df.loc[pos].PeriodRatio = (df[pos].Period/df[pos].Period.min())
+
 df['StarInt'] = 0
 for idx, n in enumerate(tqdm(unique_names)):
     df.StarInt[df.Name == n] = idx
