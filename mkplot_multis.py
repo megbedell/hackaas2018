@@ -5,8 +5,8 @@ from tqdm import tqdm
 import os
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 from bokeh.plotting import *
-from bokeh.palettes import d3
-from bokeh.models import OpenURL, Circle, HoverTool, PanTool, BoxZoomTool, ResetTool, SaveTool, TapTool, WheelZoomTool, CategoricalColorMapper, ColorBar
+from bokeh.models import OpenURL, Circle, HoverTool, PanTool, BoxZoomTool, ResetTool, SaveTool, TapTool, WheelZoomTool, ColorBar
+from bokeh.models import ColorMapper
 #from bokeh.models import *
 
 import pandas as pd
@@ -103,6 +103,11 @@ st_source = ColumnDataSource(data=dict(
                             )
                           )
 st_render = fig.circle(0,'StarInt', source=st_source, radius='StRadius', name='stars', alpha=0.7, color='color')
+star_palette = np.asarray([mpl.colors.rgb2hex(cmap(c)) for c in np.arange(3000,10000,100)])
+color_mapper = ColorMapper(palette=star_palette, low=3000, high=10000)
 
-#fig.add_tools(hover)
+color_bar = ColorBar(color_mapper=color_mapper,
+                     label_standoff=12, border_line_color=None, location=(0,0))
+fig.add_layout(color_bar, 'right')
+
 show(fig)
