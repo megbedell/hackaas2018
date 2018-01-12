@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from tqdm import tqdm
 import os
+import astropy.units as u
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 from bokeh.plotting import *
 from bokeh.models import OpenURL, Circle, HoverTool, PanTool, BoxZoomTool, ResetTool, SaveTool, TapTool, WheelZoomTool, ColorBar
@@ -20,6 +21,7 @@ if not os.path.isfile('multiples.csv'):
     mass = nexa.data['pl_massj'].astype(float)
     rad = nexa.data['pl_radj'].astype(float)
     per = nexa.data['pl_orbper'].astype(float)
+    smax = nexa.data['pl_orbsmax'].astype(float)
     teff = nexa.data['st_teff'].astype(float)
     letter = nexa.data['pl_letter'].astype(str)
     st_rad = nexa.data['st_rad'].astype(float)
@@ -28,8 +30,8 @@ if not os.path.isfile('multiples.csv'):
     unq = np.unique(name, return_counts=True)[1] > 1
     mask = [n in np.unique(name)[unq] for n in name]
 
-    params = [name[mask], mass[mask], rad[mask], per[mask], teff[mask], st_rad[mask], st_mass[mask], letter[mask]]
-    param_names = ['Name', 'Mass', 'Radius', 'Period', 'StTeff', 'StRadius', 'StMass', 'Letter']
+    params = [name[mask], mass[mask], rad[mask], per[mask], smax[mask], teff[mask], st_rad[mask], st_mass[mask], letter[mask]]
+    param_names = ['Name', 'Mass', 'Radius', 'Period', 'Sep', 'StTeff', 'StRadius', 'StMass', 'Letter']
 
     df = pd.DataFrame()
     for param, param_name in zip(params, param_names):
@@ -47,13 +49,22 @@ if not os.path.isfile('multiples.csv'):
     for idx, n in enumerate(tqdm(unique_names)):
         df = df.set_value(df.Name == n, 'StarInt', idx)
 
+    sep = np.asarray(df.Sep)*u.AU
+    rstar = (np.asarray(df.StRadius)*u.solRad).to(u.AU)
+    temp = np.asarray(df.StTeff)*u.K
+    df['Teq'] = (temp*np.sqrt(rstar/(2*sep)))
+
+    m = (np.asarray(df.Mass)*u.jupiterMass).to(u.g)
+    v = (4./3)*np.pi*((np.asarray(df.Radius)*u.jupiterRad).to(u.cm))**3
+    df['Rho'] = (m/v).value
+
     df.to_csv('multiples.csv', index=False)
 
 else:
     df = pd.read_csv('multiples.csv')
 # start plotting in bokeh:
 
-df.Mass[np.isnan(df.Mass)]=0.01
+
 
 output_file("multis.html")
 
@@ -64,26 +75,46 @@ df['StarInt'] = 0
 for idx, n in enumerate(tqdm(unique_names)):
     df = df.set_value(df.Name == n, 'StarInt', idx)
 df = df.reset_index(drop=True)
+opacity=df.Rho * 0.1 + 0.5
+opacity[np.isnan(df.Rho)]=0.5
+
+cmap = mpl.cm.get_cmap(name='RdBu_r')
+norm = mpl.colors.Normalize(vmin=173,vmax=373)
+colors = norm(df.Teq)
+colors = np.asarray([mpl.colors.rgb2hex(cmap(c)) for c in colors])
+colors[np.isnan(df.Teq)] = '#000000'
 
 source = ColumnDataSource(data=dict(
                             Name=df.Name,
                             StarInt=df.StarInt,
                             StTeff=df.StTeff,
                             StRadius=df.StRadius,
-                            Radius=df.Radius*0.1,
+                            Radius=df.Radius,
                             Letter=df.Letter,
                             PeriodRatio=df.PeriodRatio,
                             Period=df.Period,
-                            opacity=(np.log10(df.Mass)+4)/6
+                            Density=df.Rho,
+                            Mass=df.Mass,
+                            Teq=df.Teq,
+                            opacity=opacity,
+                            size=df.Radius*0.5,
+                            color=colors
                             )
                           )
-fig = figure(tools="pan,wheel_zoom,box_zoom,reset", x_range=[-0.5, 50.0], active_scroll="wheel_zoom")
+fig = figure(tools="pan,wheel_zoom,box_zoom,reset", x_range=[-0.5, 50.0], active_scroll="wheel_zoom", title='Multiplanet Systems')
+fig.yaxis.visible = False
+fig.xaxis.axis_label = "Period [days]"
 
-pl_render = fig.circle('PeriodRatio','StarInt', source=source, radius='Radius', name='planets', alpha='opacity')
+
+pl_render = fig.circle('Period','StarInt', source=source, radius='size', name='planets', alpha='opacity', color='color', line_color='black')
 hover = HoverTool(renderers=[pl_render],
 tooltips=[
         ("System", "@Name @Letter"),
-        ("Period", "@Period{1.11} days")
+        ("Period", "@Period{1.11} days"),
+        ("Mass", "@Mass{1.11} MJup"),
+        ("Radius", "@Radius{1.11} RJup"),
+        ("Temperature", "@Teq{1.0} K"),
+        ("Density", "@Density{1.0} g/cm^3")
         ]
     )
 fig.add_tools(hover)
@@ -103,7 +134,7 @@ st_source = ColumnDataSource(data=dict(
                             color=colors[p]
                             )
                           )
-st_render = fig.circle(0,'StarInt', source=st_source, radius='StRadius', name='stars', alpha=0.7, color='color')
+st_render = fig.circle(0,'StarInt', source=st_source, radius='size', name='stars', alpha=0.7, color='color')
 st_hover = HoverTool(renderers=[st_render],
 tooltips=[
         ("Star", "@Name"),
@@ -113,11 +144,5 @@ tooltips=[
             ]
     )
 fig.add_tools(st_hover)
-star_palette = np.asarray([mpl.colors.rgb2hex(cmap(c)) for c in np.arange(3000,10000,100)])
-color_mapper = ColorMapper(palette=star_palette, low=3000, high=10000)
-
-color_bar = ColorBar(color_mapper=color_mapper,
-                     label_standoff=12, border_line_color=None, location=(0,0))
-fig.add_layout(color_bar, 'right')
 
 show(fig)
