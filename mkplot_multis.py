@@ -5,8 +5,12 @@ from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 from bokeh.plotting import *
 from bokeh.models import OpenURL, Circle, HoverTool, PanTool, BoxZoomTool, ResetTool, SaveTool, TapTool, WheelZoomTool
 #from bokeh.models import *
-
+import sys
 import xml.etree.ElementTree as ET, urllib, gzip, io
+if sys.version_info[0] < 3: # python 2
+    from urllib import urlopen
+else: # python 3
+    from urllib.request import urlopen
 url = "https://github.com/OpenExoplanetCatalogue/oec_gzip/raw/master/systems.xml.gz"
 oec = ET.parse(gzip.GzipFile(fileobj=io.BytesIO(urllib.urlopen(url).read())))
 
